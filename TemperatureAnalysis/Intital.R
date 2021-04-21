@@ -413,14 +413,19 @@ White %>% filter(taxa %in% WithSuffceintObs$taxa) %>% mutate(PHS = RawMean) %>%
   ggplot(aes(x = MeanGDDc, y= PHS, group = taxa)) +geom_point()+
   geom_smooth(method = 'lm',se = F)
 
-White %>% filter(taxa %in% WithSuffceintObs$taxa) %>% mutate(PHS = RawMean)%>%
-  join(., EnvPHSweather) %>% group_by(taxa) %>%
-  group_modify(~broom::tidy(lm(PHS ~ MeanGDDc, data = .x))) %>% 
-  ggplot(aes(x = estimate)) +geom_histogram()+ facet_wrap(vars(term), scales = 'free')
 
 WhitePHSbyEnv = White %>% filter(taxa %in% WithSuffceintObs$taxa) %>% mutate(PHS = RawMean)%>%
   join(., EnvPHSweather) %>%  group_by(taxa) %>%
-  group_modify(~broom::tidy(lm(PHS ~ MeanGDDc, data = .x)))
+  group_modify(~broom::tidy(lm(PHS ~ MeanGDDc, data = .x))) %>%
+  join(.,White %>% filter(taxa %in% WithSuffceintObs$taxa) %>% group_by(taxa) %>% summarize(n=n()))
+
+WhitePHSbyEnv %>%
+  ggplot(aes(x = estimate, fill = as.factor(n))) +geom_histogram()+
+  facet_wrap(vars(term), scales = 'free')
+
+WhitePHSbyEnv %>%
+  ggplot(aes(x = -log10(p.value),fill = as.factor(n))) +geom_histogram()+ facet_wrap(vars(term), scales = 'free')+
+  geom_vline(xintercept = -log10(0.01))
 
 # wheatRealtions = A.mat(X =myGDwheat[,-1]-1,impute.method = 'EM' )
 # PCAvalues = eigen(wheatRealtions)
@@ -440,10 +445,25 @@ slope.gwas.mlm = WhitePHSbyEnv %>% filter(term == 'MeanGDDc') %>%
   GAPIT(Y =.,GD = myGDwheat, GM = myGMwheatGAPIT, model = 'MLM', PCA.total = 2,
         Geno.View.output=F, Major.allele.zero = F, file.output=F,SNP.MAF = 0.05)  
 
+
 Intercept.gwas.mlm$GWAS %>% filter( maf>0.05) %>%arrange(P.value) %>% slice_head(n = 5)
 slope.gwas.mlm$GWAS %>% filter( maf>0.05) %>% arrange(P.value) %>% slice_head(n = 5)
 
-  
-  
+
+Intercept.gwas.mlmm = WhitePHSbyEnv %>% filter(term == '(Intercept)') %>%
+  dplyr::select(taxa, estimate) %>% data.frame() %>%
+  GAPIT(Y =.,GD = myGDwheat, GM = myGMwheatGAPIT, model = 'MLMM', PCA.total = 2,
+        Geno.View.output=F, Major.allele.zero = F, file.output=F,SNP.MAF = 0.05)  
+
+slope.gwas.mlmm = WhitePHSbyEnv %>% filter(term == 'MeanGDDc') %>%
+  dplyr::select(taxa, estimate) %>% data.frame() %>%
+  GAPIT(Y =.,GD = myGDwheat, GM = myGMwheatGAPIT, model = 'MLMM', PCA.total = 2,
+        Geno.View.output=F, Major.allele.zero = F, file.output=F,SNP.MAF = 0.05)  
+Intercept.gwas.mlmm$GWAS %>% filter( maf>0.05) %>%arrange(P.value) %>% slice_head(n = 5)
+slope.gwas.mlmm$GWAS %>% filter( maf>0.05) %>% arrange(P.value) %>% slice_head(n = 5)
+
+Intercept.gwas.mlmm$GWAS %>% arrange(P.value) %>% slice_head(n = 5)
+slope.gwas.mlmm$GWAS %>% filter( maf>0.05) %>% arrange(P.value) %>% slice_head(n = 5)
+
   
   
